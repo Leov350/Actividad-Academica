@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ruleta de Java</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #17324D, #216869);
+    color: white;
+    text-align: center;
+    padding: 20px;
+    margin: 0;
+    min-height: 100vh;
+  }
+  .caja {
+    max-width: 680px;
+    margin: auto;
+    padding: 25px;
+    background: rgba(255,255,255,0.12);
+    border: 2px solid rgba(255,255,255,0.35);
+    border-radius: 20px;
+  }
+  h1 { margin-top: 0; }
+  .nombres input {
+    padding: 10px 12px;
+    margin: 4px;
+    border-radius: 9px;
+    border: none;
+    font-size: 16px;
+    width: 80%;
+    max-width: 300px;
+  }
+  button {
+    padding: 12px 26px;
+    margin: 14px 6px 6px;
+    border-radius: 9px;
+    border: none;
+    font-size: 17px;
+    background: #FFD166;
+    color: #17324D;
+    cursor: pointer;
+    font-weight: bold;
+    transition: transform 0.15s, opacity 0.15s;
+  }
+  button:hover:not(:disabled) { transform: scale(1.05); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .ruleta-contenedor {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    margin: 20px auto 0;
+  }
+  canvas { width: 100%; height: auto; display: block; }
+  /* Flecha indicadora */
+  .flecha {
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 16px solid transparent;
+    border-right: 16px solid transparent;
+    border-top: 34px solid #FFD166;
+    filter: drop-shadow(0 3px 3px rgba(0,0,0,0.5));
+    z-index: 2;
+    transform-origin: 50% 0;
+  }
+  .flecha.golpe { animation: golpe 0.12s ease-out; }
+  @keyframes golpe {
+    0%   { transform: translateX(-50%) rotate(0deg); }
+    40%  { transform: translateX(-50%) rotate(-18deg); }
+    100% { transform: translateX(-50%) rotate(0deg); }
+  }
+
+  #resultado {
+    font-size: 24px;
+    font-weight: bold;
+    margin-top: 18px;
+    min-height: 32px;
+  }
+  #pregunta {
+    font-size: 18px;
+    line-height: 1.5;
+    min-height: 28px;
+  }
+  .aparece { animation: aparece 0.6s ease-out; }
+  @keyframes aparece {
+    from { opacity: 0; transform: scale(0.7); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+</style>
+</head>
+<body>
+<div class="caja">
+  <h1>🎡 Ruleta de Java</h1>
+  <p>Escribe los cinco nombres de los estudiantes:</p>
+
+  <div class="nombres">
+    <input id="n1" placeholder="Estudiante 1"><br>
+    <input id="n2" placeholder="Estudiante 2"><br>
+    <input id="n3" placeholder="Estudiante 3"><br>
+    <input id="n4" placeholder="Estudiante 4"><br>
+    <input id="n5" placeholder="Estudiante 5"><br>
+  </div>
+
+  <div class="ruleta-contenedor">
+    <div class="flecha" id="flecha"></div>
+    <canvas id="ruleta" width="840" height="840"></canvas>
+  </div>
+
+  <button id="btnGirar" onclick="girar()">Girar ruleta</button>
+
+  <div id="resultado"></div>
+  <p id="pregunta"></p>
+</div>
+
+<script>
+const preguntas = [
+  "¿Qué es una variable y para qué sirve?",
+  "¿Qué diferencia hay entre print y println?",
+  "¿Qué pasa si el usuario responde No?",
+  "¿Qué función cumple la raíz de un árbol?",
+  "¿Para qué se utiliza Scanner(System.in)?"
+];
+
+const colores = ["#EF476F", "#FFD166", "#06D6A0", "#118AB2", "#9B5DE5"];
+const canvas = document.getElementById("ruleta");
+const ctx = canvas.getContext("2d");
+const flecha = document.getElementById("flecha");
+const btn = document.getElementById("btnGirar");
+const N = 5;
+const SEG = (Math.PI * 2) / N;
+
+let angulo = 0;        // rotación actual de la rueda (radianes)
+let girando = false;
+
+function obtenerNombres() {
+  return [1, 2, 3, 4, 5].map(i => document.getElementById("n" + i).value.trim());
+}
+
+function dibujar() {
+  const w = canvas.width, c = w / 2, r = c - 20;
+  const nombres = obtenerNombres();
+  ctx.clearRect(0, 0, w, w);
+
+  // Sombra / borde exterior
+  ctx.beginPath();
+  ctx.arc(c, c, r + 10, 0, Math.PI * 2);
+  ctx.fillStyle = "#FFD166";
+  ctx.shadowColor = "rgba(0,0,0,0.5)";
+  ctx.shadowBlur = 20;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  for (let i = 0; i < N; i++) {
+    const ini = angulo + i * SEG;
+    const fin = ini + SEG;
+
+    // Segmento
+    ctx.beginPath();
+    ctx.moveTo(c, c);
+    ctx.arc(c, c, r, ini, fin);
+    ctx.closePath();
+    ctx.fillStyle = colores[i];
+    ctx.fill();
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // Texto
+    ctx.save();
+    ctx.translate(c, c);
+    ctx.rotate(ini + SEG / 2);
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = (i === 1) ? "#17324D" : "white";
+    ctx.font = "bold 40px Arial";
+    let texto = nombres[i] || ("Estudiante " + (i + 1));
+    if (texto.length > 12) texto = texto.slice(0, 11) + "…";
+    ctx.fillText(texto, r - 30, 0);
+    ctx.restore();
+  }
+
+  // Centro
+  ctx.beginPath();
+  ctx.arc(c, c, 38, 0, Math.PI * 2);
+  ctx.fillStyle = "#17324D";
+  ctx.fill();
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = "#FFD166";
+  ctx.stroke();
+}
+
+// Segmento que queda bajo la flecha (arriba = -90°)
+function indiceGanador() {
+  let a = (-Math.PI / 2 - angulo) % (Math.PI * 2);
+  if (a < 0) a += Math.PI * 2;
+  return Math.floor(a / SEG) % N;
+}
+
+const easeOut = t => 1 - Math.pow(1 - t, 4);
+
+function girar() {
+  if (girando) return;
+  const nombres = obtenerNombres();
+  const res = document.getElementById("resultado");
+  const preg = document.getElementById("pregunta");
+
+  if (nombres.some(n => n === "")) {
+    res.textContent = "Completa los cinco nombres antes de girar.";
+    preg.textContent = "";
+    return;
+  }
+
+  girando = true;
+  btn.disabled = true;
+  res.textContent = "Girando...";
+  preg.textContent = "";
+
+  const inicio = angulo;
+  const vueltas = 5 + Math.random() * 3;               // 5 a 8 vueltas
+  const total = vueltas * Math.PI * 2 + Math.random() * Math.PI * 2;
+  const duracion = 5000;                                // 5 segundos
+  const t0 = performance.now();
+  let ultimoSeg = indiceGanador();
+
+  function animar(ahora) {
+    const t = Math.min((ahora - t0) / duracion, 1);
+    angulo = inicio + total * easeOut(t);
+    dibujar();
+
+    // Efecto "tic" de la flecha al cruzar cada segmento
+    const seg = indiceGanador();
+    if (seg !== ultimoSeg) {
+      ultimoSeg = seg;
+      flecha.classList.remove("golpe");
+      void flecha.offsetWidth;
+      flecha.classList.add("golpe");
+    }
+
+    if (t < 1) {
+      requestAnimationFrame(animar);
+    } else {
+      terminar();
+    }
+  }
+  requestAnimationFrame(animar);
+}
+
+function terminar() {
+  const i = indiceGanador();
+  const estudiante = obtenerNombres()[i];
+  const pregunta = preguntas[Math.floor(Math.random() * preguntas.length)];
+  const res = document.getElementById("resultado");
+  const preg = document.getElementById("pregunta");
+
+  res.textContent = "🎉 Le toca a: " + estudiante;
+  preg.textContent = pregunta;
+  res.classList.remove("aparece"); preg.classList.remove("aparece");
+  void res.offsetWidth;
+  res.classList.add("aparece"); preg.classList.add("aparece");
+
+  girando = false;
+  btn.disabled = false;
+}
+
+// Actualizar la rueda mientras se escriben los nombres
+document.querySelectorAll(".nombres input").forEach(inp =>
+  inp.addEventListener("input", () => { if (!girando) dibujar(); })
+);
+
+dibujar();
+</script>
+</body>
+</html>
